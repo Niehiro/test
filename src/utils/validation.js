@@ -18,6 +18,18 @@ const loginSchema = z.object({
   password: z.string().min(1)
 });
 
+const registerSchema = z.object({
+  fullName: z.string().min(2).max(120),
+  email: z.string().email(),
+  phone: z.string().regex(phoneRegex, 'Invalid phone number'),
+  password: z.string().min(6)
+});
+
+const userLoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1)
+});
+
 const slotCreateSchema = z.object({
   barberId: z.coerce.number().int().positive(),
   date: z.string().regex(dateRegex, 'Invalid date format'),
@@ -47,6 +59,8 @@ function validate(schema, data) {
 module.exports = {
   bookingSchema,
   loginSchema,
+  registerSchema,
+  userLoginSchema,
   slotCreateSchema,
   slotQuerySchema,
   bookingsQuerySchema,

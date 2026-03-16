@@ -1,6 +1,14 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { pool } = require('../db/pool');
-const { bookingSchema, slotQuerySchema, validate } = require('../utils/validation');
+const {
+  bookingSchema,
+  slotQuerySchema,
+  registerSchema,
+  userLoginSchema,
+  validate
+} = require('../utils/validation');
 
 const router = express.Router();
 
@@ -50,6 +58,77 @@ router.get('/slots', async (req, res, next) => {
 
     const result = await pool.query(sql, params);
     res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/auth/register', async (req, res, next) => {
+  const { data, error } = validate(registerSchema, req.body);
+  if (error) {
+    return res.status(400).json({ error: 'Invalid payload', details: error.fieldErrors });
+  }
+
+  const client = await pool.connect();
+  try {
+    const exists = await client.query(
+      'SELECT id FROM users WHERE email = $1 OR phone = $2',
+      [data.email, data.phone]
+    );
+    if (exists.rowCount) {
+      return res.status(409).json({ error: 'User already exists' });
+    }
+
+    const passwordHash = await bcrypt.hash(data.password, 10);
+    const insertRes = await client.query(
+      `INSERT INTO users (full_name, email, phone, password_hash)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, full_name, email, phone, created_at`,
+      [data.fullName, data.email, data.phone, passwordHash]
+    );
+
+    res.status(201).json({ user: insertRes.rows[0] });
+  } catch (err) {
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+router.post('/auth/login', async (req, res, next) => {
+  const { data, error } = validate(userLoginSchema, req.body);
+  if (error) {
+    return res.status(400).json({ error: 'Invalid payload', details: error.fieldErrors });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT id, full_name, email, phone, password_hash FROM users WHERE email = $1',
+      [data.email]
+    );
+    if (!result.rowCount) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const user = result.rows[0];
+    const valid = await bcrypt.compare(data.password, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = process.env.JWT_SECRET
+      ? jwt.sign({ sub: user.id, role: 'user' }, process.env.JWT_SECRET, { expiresIn: '7d' })
+      : null;
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        fullName: user.full_name,
+        email: user.email,
+        phone: user.phone
+      }
+    });
   } catch (err) {
     next(err);
   }
