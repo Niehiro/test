@@ -3,15 +3,15 @@ require('dotenv').config();
 const { pool } = require('../src/db/pool');
 
 const barbers = [
-  { name: 'Azamat', isActive: true },
-  { name: 'Beksultan', isActive: true },
-  { name: 'Daniyar', isActive: true }
+  { name: 'AzamatTEST', isActive: true },
+  { name: 'BeksultanTEST', isActive: true },
+  { name: 'DaniyarTEST', isActive: true }
 ];
 
 const services = [
-  { name: 'Classic haircut', duration: 30, price: 500 },
-  { name: 'Fade haircut', duration: 45, price: 700 },
-  { name: 'Beard trim', duration: 20, price: 400 }
+  { name: 'Classic haircutTEST', duration: 30, price: 500 },
+  { name: 'Fade haircutTEST', duration: 45, price: 700 },
+  { name: 'Beard trimTEST', duration: 20, price: 400 }
 ];
 
 async function upsertBarbers(client) {
